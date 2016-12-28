@@ -9,127 +9,155 @@
 import Foundation
 import UIKit
 
-extension UILabel {
-    
-    var value: Double? {
-        get {
-            return NSNumberFormatter().numberFromString(self.text!) as? Double
-        }
-        set {
-            self.text = newValue != nil ? "\(newValue!)" : " "
-        }
-    }
-}
+import UIKit
 
 class CalculatorViewController: UIViewController {
-    
     @IBOutlet weak var display: UILabel!
     @IBOutlet weak var history: UILabel!
     
-    var brain = CalculatorBrain()
-    var userIsInTheMiddleOfTypingANumber = false
+    private struct DefaultDisplayResult {
+        static let Startup: Double = 0
+        static let Error = "Error!"
+    }
+    
+    private var userIsInTheMiddleOfTypingANumber = false
+    private let defaultHistoryText = " "
+    
+    private var brain = CalculatorBrain()
+    
+    @IBAction func clear() {
+        brain.clearStack()
+        brain.variableValues.removeAll()
+        displayResult = CalculatorBrainEvaluationResult.Success(DefaultDisplayResult.Startup)
+        history.text = defaultHistoryText
+    }
     
     @IBAction func appendDigit(sender: UIButton) {
         let digit = sender.currentTitle!
-        display.text = userIsInTheMiddleOfTypingANumber ? display.text! + digit : digit
-        userIsInTheMiddleOfTypingANumber = true
-    }
-    
-    @IBAction func appendPeriod(sender: UIButton) {
-        if display.text!.rangeOfString(".") == nil {
-            appendDigit(sender)
-        }
-    }
-    
-    @IBAction func appendSign(sender: UIButton) {
-        if userIsInTheMiddleOfTypingANumber && display.value != nil {
-            display.value = -display.value!
+        if userIsInTheMiddleOfTypingANumber {
+            if digit != "." || display.text!.rangeOfString(".") == nil {
+                display.text = display.text! + digit
+            }
         } else {
-            operate(sender)
+            display.text = digit
+            userIsInTheMiddleOfTypingANumber = true
         }
-    }
-    
-    @IBAction func pushConstant(sender: UIButton) {
-        let constant = sender.currentTitle!
-        enter()
-        display.text = constant
-        brain.pushOperation(constant)
-        history.text = brain.description
-    }
-    
-    @IBAction func pushMemory(sender: UIButton) {
-        let variable = sender.currentTitle!
-        enter()
-        display.text = variable
-        brain.pushVariable(variable)
-        history.text = brain.description
-    }
-    
-    @IBAction func setMemory(sender: UIButton) {
-        var variable = sender.currentTitle!
-        variable.removeAtIndex(variable.startIndex)
-        userIsInTheMiddleOfTypingANumber = false
-        if let displayValue = display.value {
-            brain.variableValues[variable] = displayValue
-            display.text = brain.text
-            history.text = brain.description+"="
-        }
-    }
-    
-    @IBAction func operate(sender: UIButton) {
-        let operation = sender.currentTitle!
-        enter()
-        brain.pushOperation(operation)
-        display.text = brain.text
-        history.text = brain.description+"="
     }
     
     @IBAction func undo() {
-        if userIsInTheMiddleOfTypingANumber {
-            if countElements(display.text!) > 1 {
-                display.text = dropLast(display.text!)
+        if userIsInTheMiddleOfTypingANumber == true {
+            if display.text!.characters.count > 1 {
+                display.text = String(display.text!.characters.dropLast())
             } else {
-                userIsInTheMiddleOfTypingANumber = false
-                display.value = 0
+                displayResult = CalculatorBrainEvaluationResult.Success(DefaultDisplayResult.Startup)
             }
         } else {
-            brain.pop()
-            display.value = 0
-            history.text = brain.description
+            brain.removeLastOpFromStack()
+            displayResult = brain.evaluateAndReportErrors()
         }
     }
     
-    @IBAction func clear() {
+    @IBAction func changeSign() {
+        if userIsInTheMiddleOfTypingANumber {
+            if displayValue != nil {
+                displayResult = CalculatorBrainEvaluationResult.Success(displayValue! * -1)
+                
+                // set userIsInTheMiddleOfTypingANumber back to true as displayResult will set it to false
+                userIsInTheMiddleOfTypingANumber = true
+            }
+        } else {
+            displayResult = brain.performOperation("ᐩ/-")
+        }
+    }
+    
+    @IBAction func pi() {
+        if userIsInTheMiddleOfTypingANumber {
+            enter()
+        }
+        displayResult = brain.pushConstant("π")
+    }
+    
+    @IBAction func setM() {
         userIsInTheMiddleOfTypingANumber = false
-        brain.clearAll()
-        display.value = 0
-        history.text = ""
+        if displayValue != nil {
+            brain.variableValues["M"] = displayValue!
+        }
+        displayResult = brain.evaluateAndReportErrors()
+    }
+    
+    @IBAction func getM() {
+        if userIsInTheMiddleOfTypingANumber {
+            enter()
+        }
+        displayResult = brain.pushOperand("M")
+    }
+    
+    @IBAction func operate(sender: UIButton) {
+        if userIsInTheMiddleOfTypingANumber {
+            enter()
+        }
+        if let operation = sender.currentTitle {
+            displayResult = brain.performOperation(operation)
+        }
     }
     
     @IBAction func enter() {
-        if userIsInTheMiddleOfTypingANumber && display.value != nil {
-            brain.pushOperand(display.value!)
-            history.text = brain.description
-        }
         userIsInTheMiddleOfTypingANumber = false
+        if displayValue != nil {
+            displayResult = brain.pushOperand(displayValue!)
+        }
     }
     
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-        var destination = segue.destinationViewController as? UIViewController
-        if let navCon = destination as? UINavigationController {
-            destination = navCon.visibleViewController
+    private var displayValue: Double? {
+        if let displayValue = NSNumberFormatter().numberFromString(display.text!) {
+            return displayValue.doubleValue
         }
-        if let graphViewController = destination as? GraphViewController {
-            if let identifier = segue.identifier {
-                switch identifier {
-                case "Show Graph":
-                    graphViewController.program = brain.program;
-                default:
-                    break
+        return nil
+    }
+    
+    private var displayResult: CalculatorBrainEvaluationResult? {
+        get {
+            if let displayValue = displayValue {
+                return .Success(displayValue)
+            }
+            if display.text != nil {
+                return .Failure(display.text!)
+            }
+            return .Failure("Error")
+        }
+        set {
+            if newValue != nil {
+                switch newValue! {
+                case let .Success(displayValue):
+                    display.text = "\(displayValue)"
+                case let .Failure(error):
+                    display.text = error
                 }
+            } else {
+                display.text = DefaultDisplayResult.Error
+            }
+            userIsInTheMiddleOfTypingANumber = false
+            
+            if !brain.description.isEmpty {
+                history.text =  (brain.description.joinWithSeparator(","))
+            } else {
+                
+                history.text = defaultHistoryText
             }
         }
     }
     
+    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+        var destination: UIViewController? = segue.destinationViewController
+        if let navCon = destination as? UINavigationController {
+            destination = navCon.visibleViewController
+        }
+        if let gvc = destination as? GraphViewController {
+            gvc.program = brain.program
+            if let graphLabel = brain.description.last {
+                gvc.graphLabel = graphLabel
+            }
+        }
+    }
     
 }
