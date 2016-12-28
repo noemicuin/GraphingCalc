@@ -28,11 +28,6 @@
                                         <color key="value" red="0.0" green="0.47843137250000001" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                     </userDefinedRuntimeAttribute>
                                 </userDefinedRuntimeAttributes>
-                                <connections>
-                                    <outletCollection property="gestureRecognizers" destination="U3G-oZ-wfe" appends="YES" id="4Ti-OQ-Efs"/>
-                                    <outletCollection property="gestureRecognizers" destination="jrw-yK-Nth" appends="YES" id="cnB-nh-JtD"/>
-                                    <outletCollection property="gestureRecognizers" destination="nHq-Zz-S7j" appends="YES" id="cQm-WS-cdk"/>
-                                </connections>
                             </view>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
@@ -50,21 +45,6 @@
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="2jc-aD-Zei" userLabel="First Responder" sceneMemberID="firstResponder"/>
-                <tapGestureRecognizer numberOfTapsRequired="2" id="nHq-Zz-S7j">
-                    <connections>
-                        <action selector="tapGraph:" destination="gFK-1t-YZ1" id="Exd-6m-AnW"/>
-                    </connections>
-                </tapGestureRecognizer>
-                <panGestureRecognizer minimumNumberOfTouches="1" id="U3G-oZ-wfe">
-                    <connections>
-                        <action selector="panGraph:" destination="gFK-1t-YZ1" id="TmG-7C-fNU"/>
-                    </connections>
-                </panGestureRecognizer>
-                <pinchGestureRecognizer id="jrw-yK-Nth">
-                    <connections>
-                        <action selector="pinchGraph:" destination="gFK-1t-YZ1" id="6qy-sT-Bcf"/>
-                    </connections>
-                </pinchGestureRecognizer>
             </objects>
             <point key="canvasLocation" x="1917" y="-233"/>
         </scene>

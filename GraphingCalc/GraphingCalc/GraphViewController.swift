@@ -43,12 +43,8 @@ class GraphViewController: UIViewController, GraphViewDataSource, UIPopoverPrese
         if let program = program {
             brain.program = program
             
-            // Performance fix to remove sluggish behavior (specially when screen is zoomed out):
-            // a. the difference between minXDegree and maxXDegree will be high when zoomed out
-            // b. the screen width has a fixed number of pixels, so we need to iterate only
-            //    for the number of available pixels
-            // c. loopIncrementSize ensures that the count of var plots will always be fixed to
-            //    the number of available pixels for screen width
+            
+            //used to make sure plots will be fixed to num of pixels for screen
             let loopIncrementSize = (maxXDegree - minXDegree) / sender.availablePixelsInXAxis
             
             for (var i = minXDegree; i <= maxXDegree; i = i + loopIncrementSize) {
@@ -68,60 +64,16 @@ class GraphViewController: UIViewController, GraphViewDataSource, UIPopoverPrese
         return plots
     }
     
-    @IBAction func zoomGraph(gesture: UIPinchGestureRecognizer) {
-        if gesture.state == .Changed {
-            graphView.scale *= gesture.scale
-            
-            // save the scale
-            saveScaleAndOrigin()
-            gesture.scale = 1
-        }
-    }
     
-    @IBAction func moveGraph(gesture: UIPanGestureRecognizer) {
-        switch gesture.state {
-        case .Ended: fallthrough
-        case .Changed:
-            let translation = gesture.translationInView(graphView)
-            
-            if graphView.graphOrigin == nil {
-                graphView.graphOrigin = CGPoint(
-                    x: graphView.center.x + translation.x,
-                    y: graphView.center.y + translation.y)
-            } else {
-                graphView.graphOrigin = CGPoint(
-                    x: graphView.graphOrigin!.x + translation.x,
-                    y: graphView.graphOrigin!.y + translation.y)
-            }
-            
-            // save the graphOrigin
-            saveScaleAndOrigin()
-            
-            // set back to zero, otherwise will be cumulative
-            gesture.setTranslation(CGPointZero, inView: graphView)
-        default: break
-        }
-    }
     
-    @IBAction func moveOrigin(gesture: UITapGestureRecognizer) {
-        switch gesture.state {
-        case .Ended:
-            graphView.graphOrigin = gesture.locationInView(view)
-            
-            // save the graphOrigin
-            saveScaleAndOrigin()
-        default: break
-        }
-    }
+    
     
     private func saveScaleAndOrigin() {
         userDefaults.setObject(graphView.scaleAndOrigin, forKey: Constants.ScaleAndOrigin)
         userDefaults.synchronize()
     }
-    
-    // Detect device rotation and adjust origin to center instead of upper-left:
-    // if graph origin is far off center, then rotation change might move it off-screen so
-    // calcualtion also makes a subtle adjustment based on the ratio of the height and with change
+  
+    //used so graph matches rotation of phone
     override func viewWillTransitionToSize(size: CGSize, withTransitionCoordinator coordinator: UIViewControllerTransitionCoordinator) {
         
         var xDistanceFromCenter: CGFloat = 0
